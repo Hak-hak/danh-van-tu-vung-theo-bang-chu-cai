@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABC Spelling Adventure</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Segoe UI', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #ff9a9e, #fad0c4);
+            text-align: center;
+            color: #333;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 700px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 80vh;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #d6336c;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+        }
+        #word-meaning {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #9c36b5;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        #word-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+            min-height: 50px;
+            background-color: #fff3f3;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        #letters-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: auto;
+            background-color: #f8e1e9;
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .letter {
+            padding: 12px 18px;
+            font-size: 1.2rem;
+            background-color: #ff8787;
+            color: white;
+            border: 2px solid #ff6b6b;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .letter:hover {
+            background-color: #ff6b6b;
+            transform: scale(1.1);
+        }
+        .letter.correct {
+            background-color: #69db7c;
+            border-color: #2f9e44;
+            cursor: default;
+            transform: none;
+        }
+        .letter.flash {
+            animation: flash 0.5s 2;
+        }
+        @keyframes flash {
+            0% { background-color: #339af0; border-color: #1864ab; }
+            50% { background-color: #4dabf7; border-color: #228be6; }
+            100% { background-color: #339af0; border-color: #1864ab; }
+        }
+        #feedback {
+            font-size: 1.2rem;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        #score, #word-count {
+            font-size: 1.1rem;
+            margin: 10px 0;
+            color: #9c36b5;
+        }
+        #start-btn, #reset-btn, #replay-btn {
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            margin: 10px;
+            cursor: pointer;
+            background: linear-gradient(45deg, #ff6b6b, #ff9a9e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        #start-btn:hover, #reset-btn:hover, #replay-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        #start-btn:disabled, #reset-btn:disabled, #replay-btn:disabled {
+            background: #adb5bd;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #congratulations {
+            display: none;
+            font-size: 2rem;
+            color: #2f9e44;
+            font-weight: bold;
+            position: relative;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            .letter, #start-btn, #reset-btn, #replay-btn {
+                font-size: 1rem;
+                padding: 10px 14px;
+            }
+            #word-meaning, #feedback {
+                font-size: 1rem;
+            }
+            #score, #word-count {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <h1>ABC Spelling Adventure</h1>
+            <p>Listen to the letters and click them to build the word!</p>
+            <p id="word-meaning"></p>
+            <div id="word-container"></div>
+            <p id="feedback"></p>
+            <p id="score">Score: 0</p>
+            <p id="word-count">Words Completed: 0/75</p>
+            <button id="start-btn">Start</button>
+            <button id="reset-btn">Reset Game</button>
+            <button id="replay-btn">Replay Letter</button>
+            <p id="congratulations">Congratulations! You've completed all words!</p>
+        </div>
+        <div id="letters-container"></div>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script>
+        const vocabulary = [
+            { word: "alligator", meaning: "cá sấu", emoji: "🐊" },
+            { word: "ant", meaning: "kiến", emoji: "🐜" },
+            { word: "apple", meaning: "táo", emoji: "🍎" },
+            { word: "ball", meaning: "quả bóng", emoji: "⚽" },
+            { word: "banana", meaning: "chuối", emoji: "🍌" },
+            { word: "bear", meaning: "gấu", emoji: "🐻" },
+            { word: "car", meaning: "xe hơi", emoji: "🚗" },
+            { word: "cat", meaning: "mèo", emoji: "🐱" },
+            { word: "cow", meaning: "bò", emoji: "🐄" },
+            { word: "dog", meaning: "chó", emoji: "🐶" },
+            { word: "drum", meaning: "trống", emoji: "🥁" },
+            { word: "duck", meaning: "vịt", emoji: "🦢" },
+            { word: "ear", meaning: "tai", emoji: "👂" },
+            { word: "egg", meaning: "trứng", emoji: "🥚" },
+            { word: "elephant", meaning: "voi", emoji: "🐘" },
+            { word: "fan", meaning: "quạt", emoji: "🪭" },
+            { word: "fish", meaning: "cá", emoji: "🐟" },
+            { word: "frog", meaning: "ếch", emoji: "🐸" },
+            { word: "gift", meaning: "quà tặng", emoji: "🎁" },
+            { word: "goat", meaning: "dê", emoji: "🐐" },
+            { word: "grapes", meaning: "nho", emoji: "🍇" },
+            { word: "hat", meaning: "mũ", emoji: "🎩" },
+            { word: "horse", meaning: "ngựa", emoji: "🐎" },
+            { word: "house", meaning: "nhà", emoji: "🏠" },
+            { word: "igloo", meaning: "lều tuyết", emoji: "🏔️" },
+            { word: "insect", meaning: "côn trùng", emoji: "🐞" },
+            { word: "jar", meaning: "lọ", emoji: "🏺" },
+            { word: "jelly", meaning: "thạch", emoji: "🍮" },
+            { word: "juice", meaning: "nước ép", emoji: "🥤" },
+            { word: "kangaroo", meaning: "chuột túi", emoji: "🦘" },
+            { word: "key", meaning: "chìa khóa", emoji: "🔑" },
+            { word: "kite", meaning: "diều", emoji: "🪁" },
+            { word: "lamp", meaning: "đèn", emoji: "💡" },
+            { word: "leaf", meaning: "lá", emoji: "🍃" },
+            { word: "lion", meaning: "sư tử", emoji: "🦁" },
+            { word: "milk", meaning: "sữa", emoji: "🥛" },
+            { word: "moon", meaning: "mặt trăng", emoji: "🌙" },
+            { word: "monkey", meaning: "khỉ", emoji: "🐒" },
+            { word: "net", meaning: "lưới", emoji: "🕸️" },
+            { word: "nest", meaning: "tổ", emoji: "🪹" },
+            { word: "nose", meaning: "mũi", emoji: "👃" },
+            { word: "octopus", meaning: "bạch tuộc", emoji: "🐙" },
+            { word: "orange", meaning: "cam", emoji: "🍊" },
+            { word: "owl", meaning: "cú", emoji: "🦉" },
+            { word: "pen", meaning: "bút", emoji: "🖊️" },
+            { word: "pig", meaning: "lợn", emoji: "🐷" },
+            { word: "pizza", meaning: "bánh pizza", emoji: "🍕" },
+            { word: "queen", meaning: "nữ hoàng", emoji: "👑" },
+            { word: "rabbit", meaning: "thỏ", emoji: "🐰" },
+            { word: "rain", meaning: "mưa", emoji: "🌧️" },
+            { word: "robot", meaning: "người máy", emoji: "🤖" },
+            { word: "sock", meaning: "tất", emoji: "🧦" },
+            { word: "star", meaning: "ngôi sao", emoji: "⭐" },
+            { word: "sun", meaning: "mặt trời", emoji: "☀️" },
+            { word: "table", meaning: "bàn", emoji: "🪑" },
+            { word: "tiger", meaning: "hổ", emoji: "🐅" },
+            { word: "turtle", meaning: "rùa", emoji: "🐢" },
+            { word: "umbrella", meaning: "ô", emoji: "☂️" },
+            { word: "unicorn", meaning: "kỳ lân", emoji: "🦄" },
+            { word: "uniform", meaning: "đồng phục", emoji: "👕" },
+            { word: "van", meaning: "xe tải", emoji: "🚐" },
+            { word: "vest", meaning: "áo vest", emoji: "🦺" },
+            { word: "violin", meaning: "đàn violin", emoji: "🎻" },
+            { word: "watch", meaning: "đồng hồ", emoji: "⌚" },
+            { word: "whale", meaning: "cá voi", emoji: "🐳" },
+            { word: "window", meaning: "cửa sổ", emoji: "🪟" },
+            { word: "x-ray", meaning: "tia X", emoji: "🩻" },
+            { word: "xylophone", meaning: "đàn xylophone", emoji: "🎹" },
+            { word: "yak", meaning: "bò Tây Tạng", emoji: "🐃" },
+            { word: "yellow", meaning: "vàng", emoji: "🟡" },
+            { word: "zebra", meaning: "ngựa vằn", emoji: "🦓" },
+            { word: "zip", meaning: "khóa kéo", emoji: "🤐" },
+            { word: "zoo", meaning: "sở thú", emoji: "🦒" },
+            { word: "quail", meaning: "chim cút", emoji: "🐦" },
+            { word: "quilt", meaning: "chăn bông", emoji: "🛏️" }
+        ];
+
+        let currentWord = null;
+        let currentLetterIndex = 0;
+        let score = 0;
+        let wordsCompleted = 0;
+        let usedWords = [];
+        const wordContainer = document.getElementById("word-container");
+        const lettersContainer = document.getElementById("letters-container");
+        const wordMeaning = document.getElementById("word-meaning");
+        const feedback = document.getElementById("feedback");
+        const scoreDisplay = document.getElementById("score");
+        const wordCountDisplay = document.getElementById("word-count");
+        const startBtn = document.getElementById("start-btn");
+        const resetBtn = document.getElementById("reset-btn");
+        const replayBtn = document.getElementById("replay-btn");
+        const congratulations = document.getElementById("congratulations");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        // Fireworks setup
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let particles = [];
+
+        function createParticle(x, y) {
+            return {
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                size: Math.random() * 5 + 2,
+                life: 100
+            };
+        }
+
+        function animateFireworks() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life--;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            });
+            if (particles.length > 0) {
+                requestAnimationFrame(animateFireworks);
+            }
+        }
+
+        function showCongratulations() {
+            congratulations.style.display = "block";
+            const rect = congratulations.getBoundingClientRect();
+            const x = rect.left + rect.width / 2;
+            const y = rect.top + rect.height / 2;
+            for (let i = 0; i < 100; i++) {
+                particles.push(createParticle(x, y));
+            }
+            animateFireworks();
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function getRandomWord() {
+            const availableWords = vocabulary.filter(w => !usedWords.includes(w.word));
+            if (availableWords.length === 0) return null;
+            return availableWords[Math.floor(Math.random() * availableWords.length)];
+        }
+
+        function speakLetter(letter, callback) {
+            const utterance = new SpeechSynthesisUtterance(letter);
+            utterance.lang = "en-US";
+            if (callback) {
+                utterance.onend = callback;
+            }
+            speechSynthesis.speak(utterance);
+        }
+
+        function speakWord(word, callback) {
+            const utterance = new SpeechSynthesisUtterance(word);
+            utterance.lang = "en-US";
+            if (callback) {
+                utterance.onend = callback;
+            }
+            speechSynthesis.speak(utterance);
+        }
+
+        function displayJumbledLetters(word) {
+            lettersContainer.innerHTML = "";
+            const letters = word.split("");
+            const jumbledLetters = shuffle([...letters]);
+            jumbledLetters.forEach(letter => {
+                const span = document.createElement("span");
+                span.classList.add("letter");
+                span.textContent = letter;
+                span.addEventListener("click", () => handleLetterClick(letter, span));
+                lettersContainer.appendChild(span);
+            });
+        }
+
+        function displayWordProgress() {
+            wordContainer.innerHTML = "";
+            for (let i = 0; i < currentWord.word.length; i++) {
+                const span = document.createElement("span");
+                span.classList.add("letter");
+                if (i < currentLetterIndex) {
+                    span.textContent = currentWord.word[i];
+                    span.classList.add("correct");
+                } else {
+                    span.textContent = "_";
+                }
+                wordContainer.appendChild(span);
+            }
+        }
+
+        function handleLetterClick(letter, span) {
+            if (letter.toLowerCase() === currentWord.word[currentLetterIndex]) {
+                span.classList.add("correct");
+                span.style.pointerEvents = "none";
+                feedback.textContent = "Correct!";
+                feedback.style.color = "#2f9e44";
+                currentLetterIndex++;
+                displayWordProgress();
+                if (currentLetterIndex >= currentWord.word.length) {
+                    wordsCompleted++;
+                    usedWords.push(currentWord.word);
+                    wordCountDisplay.textContent = `Words Completed: ${wordsCompleted}/${vocabulary.length}`;
+                    score += 10;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    feedback.textContent = "Well done! Word completed!";
+                    spellOutWord();
+                } else {
+                    speechSynthesis.cancel();
+                    setTimeout(() => speakLetter(currentWord.word[currentLetterIndex]), 500);
+                }
+            } else {
+                feedback.textContent = "Wrong! Try again.";
+                feedback.style.color = "#e03131";
+                const correctLetter = currentWord.word[currentLetterIndex];
+                const correctSpan = Array.from(lettersContainer.children).find(
+                    s => s.textContent === correctLetter && !s.classList.contains("correct")
+                );
+                correctSpan.classList.add("flash");
+                setTimeout(() => correctSpan.classList.remove("flash"), 1000);
+            }
+        }
+
+        function spellOutWord() {
+            let index = 0;
+            const letters = Array.from(wordContainer.children);
+            function speakNextLetter() {
+                if (index < currentWord.word.length) {
+                    const letter = currentWord.word[index];
+                    const letterSpan = letters[index];
+                    letterSpan.classList.add("flash");
+                    speakLetter(letter, () => {
+                        letterSpan.classList.remove("flash");
+                        index++;
+                        speakNextLetter();
+                    });
+                } else {
+                    speakWord(currentWord.word, () => {
+                        if (usedWords.length >= vocabulary.length) {
+                            showCongratulations();
+                            lettersContainer.innerHTML = "";
+                            wordContainer.innerHTML = "";
+                            wordMeaning.textContent = "";
+                            feedback.textContent = "";
+                            startBtn.disabled = true;
+                            replayBtn.disabled = true;
+                        } else {
+                            startNewRound();
+                        }
+                    });
+                }
+            }
+            speakNextLetter();
+        }
+
+        function startNewRound() {
+            currentWord = getRandomWord();
+            if (!currentWord) {
+                showCongratulations();
+                return;
+            }
+            currentLetterIndex = 0;
+            wordMeaning.innerHTML = `Meaning: ${currentWord.meaning} ${currentWord.emoji}`;
+            feedback.textContent = "";
+            displayJumbledLetters(currentWord.word);
+            displayWordProgress();
+            speakLetter(currentWord.word[0]);
+            startBtn.disabled = true;
+            resetBtn.disabled = false;
+            replayBtn.disabled = false;
+        }
+
+        function resetGame() {
+            score = 0;
+            wordsCompleted = 0;
+            usedWords = [];
+            scoreDisplay.textContent = `Score: ${score}`;
+            wordCountDisplay.textContent = `Words Completed: ${wordsCompleted}/${vocabulary.length}`;
+            wordContainer.innerHTML = "";
+            lettersContainer.innerHTML = "";
+            wordMeaning.textContent = "";
+            feedback.textContent = "";
+            congratulations.style.display = "none";
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            replayBtn.disabled = true;
+            speechSynthesis.cancel();
+        }
+
+        replayBtn.addEventListener("click", () => {
+            if (currentWord && currentLetterIndex < currentWord.word.length) {
+                speechSynthesis.cancel();
+                speakLetter(currentWord.word[currentLetterIndex]);
+            }
+        });
+
+        startBtn.addEventListener("click", startNewRound);
+        resetBtn.addEventListener("click", resetGame);
+
+        // Initial state
+        resetBtn.disabled = true;
+        replayBtn.disabled = true;
+    </script>
+</body>
+</html>
